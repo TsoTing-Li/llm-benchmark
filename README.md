@@ -10,14 +10,19 @@ Easily measure latency, throughput, and token speed with concurrent requests and
         ```bash
         sudo usermod -aG docker $USER
         ```
+* Repository
+    * clone the repository
+      ```bash
+      git clone https://github.com/TsoTing-Li/llm-benchmark.git
+      ```
 ## 🛠️ Build environment in docker
 ```bash
-docker build -f docker/Dockerfile -t innodiskorg/llm-benchmark:latest .
+docker build -f docker/Dockerfile -t llm-benchmark:latest .
 ```
 
 ## 🏁 Startup
 ```bash
-docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace innodiskorg/llm-benchmark bash
+docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace llm-benchmark bash
 ```
 
 ## ✨ Example
