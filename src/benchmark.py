@@ -34,7 +34,7 @@ async def main(args: Args) -> None:
 
     url = args.base_url.strip("/") + args.endpoint
     headers = {"Content-Type": "application/json"}
-    if args.api_key:
+    if args.api_key is not None:
         headers.update({"Authorization": f"Bearer {args.api_key}"})
     completion_type = "chat" if args.endpoint == "/v1/chat/completions" else "generate"
 
@@ -220,7 +220,7 @@ def build_parse() -> Args:
         choices=["/v1/chat/completions", "/v1/completions"],
         default="/v1/chat/completions",
     )
-    parse.add_argument("--api_key", type=str, default="")
+    parse.add_argument("--api_key", type=str, default=None)
     parse.add_argument("--model", required=True, type=str)
     parse.add_argument("--concurrency", type=int, default=16)
     parse.add_argument("--timeout", type=int, default=30)
