@@ -61,10 +61,7 @@ async def request_openai_format(
                             first_chunk_received = True
                             ttft = time.perf_counter() - start
 
-                        if "usage" in parsed:
-                            token = parsed["usage"].get("total_tokens", 0)
-                        else:
-                            token = None
+                        token = (parsed.get("usage") or {}).get("total_tokens")
 
                 latency = time.perf_counter() - start
                 return ttft, latency, token
