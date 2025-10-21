@@ -93,7 +93,7 @@ async def main(args: Args) -> None:
     async with httpx.AsyncClient() as aclient:
         print("\n✅ Check model-server")
         warmup_payload = build_payload(
-            completion_type=completion_type, prompt=args.prompt, args=args
+            completion_type=completion_type, prompt="how are you?", args=args
         )
         (
             test_ttft,
