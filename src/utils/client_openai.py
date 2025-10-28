@@ -72,7 +72,7 @@ async def request_openai_format(
                         {
                             "request": payload,
                             "status": response.status_code,
-                            "response": error_text.decode(),
+                            "response": orjson.loads(error_text),
                         }
                     )
                 return None, None, None
