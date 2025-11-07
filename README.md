@@ -29,7 +29,7 @@ docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace llm-benchmark
 * chat example
     ```bash
     python3 src/benchmark.py \
-        --base_url http://locahost:8000 \
+        --base_url http://localhost:8000 \
         --endpoint /v1/chat/completions \
         --model google/gemma-3-12b-it \
         --num_request 300 \
@@ -41,7 +41,7 @@ docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace llm-benchmark
 * generate example
     ```bash
     python3 src/benchmark.py \
-        --base_url http://locahost:8000 \
+        --base_url http://localhost:8000 \
         --endpoint /v1/completions \
         --model google/gemma-3-12b-it \
         --num_request 300 \
