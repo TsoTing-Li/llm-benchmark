@@ -162,6 +162,7 @@ async def main(args: Args) -> None:
 
             report = generate_test_report(
                 model=args.model,
+                completion_type=completion_type,
                 max_tokens=args.max_tokens,
                 num_concurrency=args.concurrency,
                 requests=args.num_request,

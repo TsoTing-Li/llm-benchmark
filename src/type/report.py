@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Literal
 
 from type.metrics import TTFT, Latency, Token
 
@@ -6,6 +7,7 @@ from type.metrics import TTFT, Latency, Token
 @dataclass
 class Report:
     model: str
+    completion_type: Literal["chat", "generate"]
     max_tokens: int
     num_concurrency: int
     total_requests: int

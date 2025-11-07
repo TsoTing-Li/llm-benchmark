@@ -1,4 +1,5 @@
 import json
+from typing import Literal
 
 from anyio import open_file
 
@@ -8,6 +9,7 @@ from type.report import Report
 
 def generate_test_report(
     model: str,
+    completion_type: Literal["chat", "generate"],
     max_tokens: int,
     num_concurrency: int,
     requests: int,
@@ -38,6 +40,7 @@ def generate_test_report(
 
     return Report(
         model=model,
+        completion_type=completion_type,
         max_tokens=max_tokens,
         num_concurrency=num_concurrency,
         total_requests=requests,
@@ -55,6 +58,7 @@ def generate_test_report(
 async def save_report_as_file(data: Report, save_path: str) -> None:
     report_content = {
         "Model": data.model,
+        "Completion type": data.completion_type,
         "Limit output tokens": data.max_tokens,
         "Number of concurrency": data.num_concurrency,
         "Total requests": data.total_requests,
