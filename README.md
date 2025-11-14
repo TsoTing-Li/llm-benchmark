@@ -56,29 +56,38 @@ docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace llm-benchmark
 
 ```json
 {
-  "Model": "google/gemma-3-12b-it",
+  "Date": "20251114_111225",
+  "Model": "meta-llama/Llama-3.2-3B",
+  "Completion type": "generate",
   "Limit output tokens": 32,
-  "Number of concurrency": 64,
-  "Total requests": 300,
-  "Duration time (s)": 33.36,
+  "Number of concurrency": 10,
+  "Duration time (s)": 3.35,
   "Dataset": "ShareGPT_V3_unfiltered_cleaned_split.json",
-  "Successful requests": 300,
-  "Request per second (req/s)": 8.99,
-  "Throughput token (tok/s)": 63.73,
+  "Request per second (req/s)": 29.81,
+  "Throughput token (tok/s)": 1217.5,
+  "Stats": {
+    "Started requests": 100,
+    "Finished requests": 100,
+    "Successful requests": 100,
+    "Failed requests": 0,
+    "Timeout requests": 0,
+    "Non-200 requests": 0,
+    "Cancelled requests": 0
+  },
   "TTFT": {
-    "Avg ttft (ms)": 1494.08,
-    "Max ttft (ms)": 6533.24,
-    "Min ttft (ms)": 80.89
+    "Avg ttft (ms)": 28.57,
+    "Max ttft (ms)": 43.84,
+    "Min ttft (ms)": 23.55
   },
   "Latency": {
-    "Avg latency (s)": 6.97,
-    "Max latency (s)": 11.82,
-    "Min latency (s)": 1.51
+    "Avg latency (s)": 0.31,
+    "Max latency (s)": 0.47,
+    "Min latency (s)": 0.02
   },
   "Token": {
-    "Avg token (tok/req)": 444.1,
-    "Max token (tok/req)": 5783,
-    "Min token (tok/req)": 24
+    "Avg token (tok/req)": 378.71,
+    "Max token (tok/req)": 2697,
+    "Min token (tok/req)": 34
   }
 }
 ```
