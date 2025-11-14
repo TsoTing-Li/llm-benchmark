@@ -1,3 +1,5 @@
+import asyncio
+import math
 import time
 from typing import Literal
 
@@ -36,47 +38,77 @@ async def request_openai_format(
     headers: dict,
     payload: dict,
     timeout: int,
-    error_record: list[dict] | None = None,
 ) -> tuple[float | None, float | None, int | None]:
-    start = time.perf_counter()
     try:
-        async with aclient.stream(
-            "POST", url=url, headers=headers, json=payload, timeout=timeout
-        ) as response:
-            if response.status_code == 200:
-                first_chunk_received = False
-                async for chunk in response.aiter_lines():
-                    if chunk.startswith("data: "):
+        timeout_cfg = httpx.Timeout(connect=10.0, read=None, write=60.0, pool=10.0)
+        async with asyncio.timeout(timeout):
+            start = time.perf_counter()
+            token = 0
+            ttft = math.inf
+            buffer = ""
+
+            async with aclient.stream(
+                "POST", url=url, headers=headers, json=payload, timeout=timeout_cfg
+            ) as response:
+                if response.status_code == 200:
+                    first_chunk_received = False
+                    async for chunk in response.aiter_lines():
+                        if not chunk.startswith("data: "):
+                            continue
+
                         data = chunk[6:]
                         if data.strip() == "[DONE]":
                             break
 
+                        buffer += data
                         try:
-                            parsed = orjson.loads(data)
-                        except Exception as e:
-                            print(f"Chunk parse error: {e}")
+                            parsed = orjson.loads(buffer)
+                            buffer = ""
+                        except Exception:
                             continue
 
                         if not first_chunk_received:
                             first_chunk_received = True
                             ttft = time.perf_counter() - start
 
-                        token = (parsed.get("usage") or {}).get("total_tokens")
+                        usage = parsed.get("usage")
+                        if usage is not None and "total_tokens" in usage:
+                            token = usage.get("total_tokens")
+                            break
 
-                latency = time.perf_counter() - start
-                return ttft, latency, token
-            else:
-                if error_record is not None:
-                    error_text = await response.aread()
-                    error_record.append(
-                        {
-                            "request": payload,
-                            "status": response.status_code,
-                            "response": orjson.loads(error_text),
-                        }
+                    latency = time.perf_counter() - start
+                    return ttft if not math.isinf(ttft) else latency, latency, token
+                else:
+                    try:
+                        error_text = await response.aread()
+                        error = orjson.loads(error_text)
+                        error_message = error["error"]["message"]
+                    except Exception:
+                        error_message = "Failed to get error message"
+                    raise httpx.HTTPStatusError(
+                        f"{error_message}",
+                        request=response.request,
+                        response=response,
                     )
-                return None, None, None
+
+    except httpx.ConnectTimeout:
+        raise
+
+    except httpx.WriteTimeout:
+        raise
+
+    except httpx.PoolTimeout:
+        raise
+
+    except asyncio.TimeoutError:
+        raise
+
+    except httpx.HTTPStatusError as e:
+        raise httpx.HTTPStatusError(
+            f"{e}",
+            request=e.request,
+            response=e.response,
+        ) from None
 
     except Exception as e:
-        print(f"Request failed: {repr(e)}")
-        return None, None, None
+        raise Exception(f"Request failed: {repr(e)}") from None

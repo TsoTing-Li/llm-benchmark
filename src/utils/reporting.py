@@ -3,16 +3,17 @@ from typing import Literal
 
 from anyio import open_file
 
-from type.metrics import TTFT, Latency, Token
+from type.metrics import TTFT, Latency, Stats, Token
 from type.report import Report
 
 
 def generate_test_report(
+    current_time: str,
     model: str,
     completion_type: Literal["chat", "generate"],
     max_tokens: int,
     num_concurrency: int,
-    requests: int,
+    stats: Stats,
     duration: float,
     dataset: str,
     prompt: str,
@@ -20,6 +21,8 @@ def generate_test_report(
     latency_list: list[float],
     token_list: list[int],
 ) -> Report:
+    rps = stats.finished_requests / duration if duration > 0 else 0.0
+
     ttft = TTFT(
         avg_ttft=round(sum(ttft_list) / len(ttft_list) * 1000, 2),
         max_ttft=round(max(ttft_list) * 1000, 2),
@@ -39,16 +42,16 @@ def generate_test_report(
     )
 
     return Report(
+        current_time=current_time,
         model=model,
         completion_type=completion_type,
         max_tokens=max_tokens,
         num_concurrency=num_concurrency,
-        total_requests=requests,
         total_duration_time=round(duration, 2),
         dataset=dataset if dataset else prompt,
-        successful_requests=len(latency_list),
-        request_per_sec=round(requests / duration, 2),
+        request_per_sec=round(rps, 2),
         throughput_token=round(sum(token_list) / sum(latency_list), 2),
+        stats=stats,
         ttft=ttft,
         latency=latency,
         token=token,
@@ -57,16 +60,24 @@ def generate_test_report(
 
 async def save_report_as_file(data: Report, save_path: str) -> None:
     report_content = {
+        "Date": data.current_time,
         "Model": data.model,
         "Completion type": data.completion_type,
         "Limit output tokens": data.max_tokens,
         "Number of concurrency": data.num_concurrency,
-        "Total requests": data.total_requests,
         "Duration time (s)": data.total_duration_time,
         "Dataset": data.dataset,
-        "Successful requests": data.successful_requests,
         "Request per second (req/s)": data.request_per_sec,
         "Throughput token (tok/s)": data.throughput_token,
+        "Stats": {
+            "Started requests": data.stats.started_requests,
+            "Finished requests": data.stats.finished_requests,
+            "Successful requests": data.stats.successful_requests,
+            "Failed requests": data.stats.failed_requests,
+            "Timeout requests": data.stats.timeout_requests,
+            "Non-200 requests": data.stats.non_200_requests,
+            "Cancelled requests": data.stats.cancelled_requests,
+        },
         "TTFT": {
             "Avg ttft (ms)": data.ttft.avg_ttft,
             "Max ttft (ms)": data.ttft.max_ttft,

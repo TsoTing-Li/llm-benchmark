@@ -17,3 +17,4 @@ class Args:
     max_tokens: int
     temperature: float
     output_file: str
+    verbose: bool = False

@@ -2,6 +2,17 @@ from dataclasses import dataclass
 
 
 @dataclass
+class Stats:
+    started_requests: int = 0
+    finished_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    timeout_requests: int = 0
+    non_200_requests: int = 0
+    cancelled_requests: int = 0
+
+
+@dataclass
 class TTFT:
     # Time to first token (ms)
     avg_ttft: float
