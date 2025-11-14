@@ -15,20 +15,20 @@ class Stats:
 @dataclass
 class TTFT:
     # Time to first token (ms)
-    avg_ttft: float
-    max_ttft: float
-    min_ttft: float
+    avg_ttft: float | None
+    max_ttft: float | None
+    min_ttft: float | None
 
 
 @dataclass
 class Latency:
-    avg_latency: float
-    max_latency: float
-    min_latency: float
+    avg_latency: float | None
+    max_latency: float | None
+    min_latency: float | None
 
 
 @dataclass
 class Token:
-    avg_token: float
-    max_token: int
-    min_token: int
+    avg_token: float | None
+    max_token: int | None
+    min_token: int | None

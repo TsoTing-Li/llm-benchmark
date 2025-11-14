@@ -23,22 +23,50 @@ def generate_test_report(
 ) -> Report:
     rps = stats.finished_requests / duration if duration > 0 else 0.0
 
+    if ttft_list:
+        avg_ttft = round(sum(ttft_list) / len(ttft_list) * 1000, 2)
+        max_ttft = round(max(ttft_list) * 1000, 2)
+        min_ttft = round(min(ttft_list) * 1000, 2)
+    else:
+        avg_ttft = None
+        max_ttft = None
+        min_ttft = None
     ttft = TTFT(
-        avg_ttft=round(sum(ttft_list) / len(ttft_list) * 1000, 2),
-        max_ttft=round(max(ttft_list) * 1000, 2),
-        min_ttft=round(min(ttft_list) * 1000, 2),
+        avg_ttft=avg_ttft,
+        max_ttft=max_ttft,
+        min_ttft=min_ttft,
     )
 
+    if latency_list:
+        avg_latency = round(sum(latency_list) / len(latency_list), 2)
+        max_latency = round(max(latency_list), 2)
+        min_latency = round(min(latency_list), 2)
+    else:
+        avg_latency = None
+        max_latency = None
+        min_latency = None
     latency = Latency(
-        avg_latency=round(sum(latency_list) / len(latency_list), 2),
-        max_latency=round(max(latency_list), 2),
-        min_latency=round(min(latency_list), 2),
+        avg_latency=avg_latency,
+        max_latency=max_latency,
+        min_latency=min_latency,
     )
 
+    if token_list:
+        avg_token = round(sum(token_list) / len(token_list), 2)
+        max_token = max(token_list)
+        min_token = min(token_list)
+    else:
+        avg_token = None
+        max_token = None
+        min_token = None
     token = Token(
-        avg_token=round(sum(token_list) / len(token_list), 2),
-        max_token=max(token_list),
-        min_token=min(token_list),
+        avg_token=avg_token,
+        max_token=max_token,
+        min_token=min_token,
+    )
+
+    throughput_token = (
+        round(sum(token_list) / sum(latency_list), 2) if sum(latency_list) > 0 else 0.0
     )
 
     return Report(
@@ -50,7 +78,7 @@ def generate_test_report(
         total_duration_time=round(duration, 2),
         dataset=dataset if dataset else prompt,
         request_per_sec=round(rps, 2),
-        throughput_token=round(sum(token_list) / sum(latency_list), 2),
+        throughput_token=throughput_token,
         stats=stats,
         ttft=ttft,
         latency=latency,
