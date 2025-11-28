@@ -17,7 +17,7 @@ Easily measure latency, throughput, and token speed with concurrent requests and
       ```
 ## 🛠️ Build environment in docker
 ```bash
-docker build -f docker/Dockerfile -t llm-benchmark:latest .
+docker build -f docker/Dockerfile -t llm-benchmark:v0.1.0 .
 ```
 
 ## 🏁 Startup
