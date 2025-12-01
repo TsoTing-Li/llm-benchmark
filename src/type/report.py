@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from typing import Literal
 
-from type.metrics import TTFT, Latency, Stats, Token
+from type.metrics import TTFT, Latency, LMCache, Stats, Token
 
 
 @dataclass
 class Report:
+    model_server: str
     current_time: str
+    stop_reason: Literal["done", "cancelled", "error"]
+    run_label: Literal["cold", "warm", "single"]
     model: str
     completion_type: Literal["chat", "generate"]
     max_tokens: int
@@ -19,3 +22,4 @@ class Report:
     ttft: TTFT
     latency: Latency
     token: Token
+    lmcache_metrics: LMCache | None = None

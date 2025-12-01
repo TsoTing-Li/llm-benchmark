@@ -10,14 +10,18 @@ import httpx
 import tqdm
 
 from type.metrics import Stats
+from type.report import Report
 from type.run_args import Args
 from utils.client_openai import build_payload, request_openai_format
 from utils.datasets import build_dataset
-from utils.reporting import generate_test_report, save_report_as_file
-from utils.utils import verbose_log
+from utils.lmcache import get_lmcache_metrics
+from utils.reporting import generate_test_report, save_report_as_file, show_report
+from utils.utils import extract_ip_from_url, verbose_log
 
 
-async def main(args: Args) -> None:
+async def main(
+    args: Args, current_time: str, run_label: Literal["cold", "warm", "single"]
+) -> Report:
     assert args.concurrency >= 1, (
         f"concurrency is {args.concurrency}, must be greater than or equal to 1."
     )
@@ -31,9 +35,7 @@ async def main(args: Args) -> None:
         f"temperature is {args.temperature}, must be greater than or equal 0.0."
     )
 
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    print("\n🛠️  Building datasets")
+    print("🛠️  Building datasets")
     test_datasets_cycle = await build_dataset(
         path=args.dataset_path, prompt=args.prompt
     )
@@ -229,7 +231,7 @@ async def main(args: Args) -> None:
 
     async with httpx.AsyncClient() as aclient:
         try:
-            print("\n✅ Check model-server")
+            print("✅ Check model-server")
             warmup_payload = build_payload(
                 completion_type=completion_type, prompt="how are you?", args=args
             )
@@ -283,7 +285,7 @@ async def main(args: Args) -> None:
 
                 with tqdm.tqdm(
                     total=args.duration_time,
-                    desc="Benchmark runner",
+                    desc=f"Benchmark runner ({run_label})",
                     unit="sec",
                     leave=True,
                 ) as pbar:
@@ -300,7 +302,7 @@ async def main(args: Args) -> None:
             elif args.num_request >= 1:
                 with tqdm.tqdm(
                     total=args.num_request,
-                    desc="Benchmark runner",
+                    desc=f"Benchmark runner ({run_label})",
                     leave=True,
                 ) as pbar:
                     tasks = [
@@ -319,14 +321,28 @@ async def main(args: Args) -> None:
                     ]
                     await asyncio.gather(*tasks)
 
+            stop_reason = "done"
+
         except asyncio.CancelledError:
-            print("\n❗ Detected KeyboardInterrupt, generating report...")
+            stop_reason = "cancelled"
+            print(
+                "\n❗ KeyboardInterrupt detected, but the report will still be generated."
+            )
+
+        except Exception as e:
+            stop_reason = "error"
+            print(
+                f"\n❌ Unexpected error during benchmark processing: {e}, try to generate report."
+            )
 
         finally:
             stress_test_end = time.perf_counter()
 
+            print("📝 Generating report")
             report = generate_test_report(
+                model_server=args.base_url,
                 current_time=current_time,
+                run_label=run_label,
                 model=args.model,
                 completion_type=completion_type,
                 max_tokens=args.max_tokens,
@@ -338,81 +354,142 @@ async def main(args: Args) -> None:
                 ttft_list=ttft_list,
                 latency_list=latencies,
                 token_list=tokens,
+                stop_reason=stop_reason,
+                use_lmcache=args.use_lmcache_metrics,
             )
 
-            report_content = f"""
-***** 📊 REPORT *****
-Date: {report.current_time}
-Model: {report.model}
-Limit output tokens: {report.max_tokens}
-Num concurrency: {report.num_concurrency}
-Duration time (s): {report.total_duration_time}
-Dataset: {report.dataset if report.dataset else args.prompt}
-Request per second (req/s): {report.request_per_sec}
-Throughput token (tok/s): {report.throughput_token}
-***** STATS *****
-Started requests: {report.stats.started_requests}
-Finished requests: {report.stats.finished_requests}
-Successful requests: {report.stats.successful_requests}
-Failed requests: {report.stats.failed_requests}
-Timeout requests: {report.stats.timeout_requests}
-Non-200 requests: {report.stats.non_200_requests}
-Cancelled requests: {report.stats.cancelled_requests}
-***** TIME TO FIRST TOKEN *****
-Avg ttft (ms): {report.ttft.avg_ttft}
-Max ttft (ms): {report.ttft.max_ttft}
-Min ttft (ms): {report.ttft.min_ttft}
-***** LATENCY *****
-Avg latency (ms): {report.latency.avg_latency}
-Max latency (ms): {report.latency.max_latency}
-Min latency (ms): {report.latency.min_latency}
-***** TOKEN *****
-Avg token (tok/req): {report.token.avg_token}
-Max token (tok/req): {report.token.max_token}
-Min token (tok/req): {report.token.min_token}
-                    """
-            print("\n", report_content.strip())
-
-            if args.output_file:
-                await save_report_as_file(data=report, save_path=args.output_file)
-                print(f"\n📄 Save report file in {args.output_file}")
+        return report
 
 
 def build_parse() -> Args:
     parse = argparse.ArgumentParser()
 
-    parse.add_argument("--base_url", required=True, type=str)
+    parse.add_argument(
+        "--base_url",
+        required=True,
+        type=str,
+        help="Base URL of the model server (e.g., http://",
+    )
     parse.add_argument(
         "--endpoint",
         type=str,
         choices=["/v1/chat/completions", "/v1/completions"],
         default="/v1/chat/completions",
+        help="API endpoint for completion requests.",
     )
-    parse.add_argument("--api_key", type=str, default=None)
-    parse.add_argument("--model", required=True, type=str)
-    parse.add_argument("--concurrency", type=int, default=16)
-    parse.add_argument("--timeout", type=int, default=120)
-    parse.add_argument("--prompt", type=str, default="how are you?")
-    parse.add_argument("--dataset_path", type=str, default="")
-    parse.add_argument("--num_request", type=int, default=100)
-    parse.add_argument("--duration_time", type=int, default=0)
-    parse.add_argument("--max_tokens", type=int, default=32)
-    parse.add_argument("--temperature", type=float, default=0.7)
-    parse.add_argument("--output_file", type=str, default="./report.json")
-    parse.add_argument(("--verbose"), action="store_true", default=False)
+    parse.add_argument(
+        "--api_key",
+        type=str,
+        default=None,
+        help="API key for authentication if required.",
+    )
+    parse.add_argument("--model", required=True, type=str, help="Model name to test.")
+    parse.add_argument(
+        "--concurrency", type=int, default=16, help="Number of concurrent requests."
+    )
+    parse.add_argument(
+        "--timeout", type=int, default=120, help="Request timeout in seconds."
+    )
+    parse.add_argument(
+        "--prompt", type=str, default="how are you?", help="Prompt template or text."
+    )
+    parse.add_argument(
+        "--dataset_path", type=str, default="", help="Path to the dataset file."
+    )
+    parse.add_argument(
+        "--num_request", type=int, default=100, help="Total number of requests to send."
+    )
+    parse.add_argument(
+        "--duration_time", type=int, default=0, help="Duration of the test in seconds."
+    )
+    parse.add_argument(
+        "--max_tokens", type=int, default=32, help="Maximum tokens to generate."
+    )
+    parse.add_argument(
+        "--temperature", type=float, default=0.7, help="Sampling temperature."
+    )
+    parse.add_argument(
+        "--report_file_root",
+        type=str,
+        default=f"{os.getcwd()}/reports",
+        help="Root directory to save report files.",
+    )
+    parse.add_argument(
+        "--output_file", type=str, default="report.json", help="Report file name."
+    )
+    parse.add_argument(
+        "--use_lmcache_metrics",
+        action="store_true",
+        default=False,
+        help="Enable LMCache metrics collection.",
+    )
+    parse.add_argument(
+        ("--verbose"),
+        action="store_true",
+        default=False,
+        help="Enable verbose logging.",
+    )
 
     args = parse.parse_args()
-    print(args)
+    print(f"{args}\n", flush=True)
 
     return Args(**vars(args))
 
 
 if __name__ == "__main__":
     args = build_parse()
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    benchmark_reports: dict[str, Report] = dict()
+
     try:
-        asyncio.run(main(args=args))
+        if args.use_lmcache_metrics:
+            lmcache_host = extract_ip_from_url(url=args.base_url)
+            baseline_lmcache_metrics = get_lmcache_metrics(lmcache_host=lmcache_host)
+            cold_report = asyncio.run(
+                main(args=args, current_time=current_time, run_label="cold")
+            )
+            if cold_report.lmcache_metrics is not None:
+                clean_cold_metrics = cold_report.lmcache_metrics.diff(
+                    baseline=baseline_lmcache_metrics
+                )
+                cold_report.lmcache_metrics = clean_cold_metrics
+
+            show_report(report=cold_report)
+            cold_report_file = f"{args.report_file_root}/{current_time}/{current_time}_cold_{args.output_file}"
+            benchmark_reports[cold_report_file] = cold_report
+
+            baseline_lmcache_metrics = get_lmcache_metrics(lmcache_host=lmcache_host)
+            warm_report = asyncio.run(
+                main(args=args, current_time=current_time, run_label="warm")
+            )
+            if warm_report.lmcache_metrics is not None:
+                clean_warm_metrics = warm_report.lmcache_metrics.diff(
+                    baseline=baseline_lmcache_metrics
+                )
+                warm_report.lmcache_metrics = clean_warm_metrics
+            show_report(report=warm_report)
+            warm_report_file = f"{args.report_file_root}/{current_time}/{current_time}_warm_{args.output_file}"
+            benchmark_reports[warm_report_file] = warm_report
+
+        else:
+            single_report = asyncio.run(
+                main(args=args, current_time=current_time, run_label="single")
+            )
+            show_report(report=single_report)
+            single_report_file = f"{args.report_file_root}/{current_time}/{current_time}_single_{args.output_file}"
+            benchmark_reports[single_report_file] = single_report
+
     except KeyboardInterrupt:
         print("\n❗ User interrupted")
     except Exception as e:
         traceback.print_exc()
         print(f"\n❌ Unexpected error: {e}")
+    finally:
+        for file_path, report in benchmark_reports.items():
+            asyncio.run(
+                save_report_as_file(
+                    data=report,
+                    save_path=file_path,
+                )
+            )
+            print(f"📄 Save report file in {file_path}", flush=True)

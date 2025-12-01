@@ -16,5 +16,7 @@ class Args:
     duration_time: int
     max_tokens: int
     temperature: float
+    report_file_root: str
     output_file: str
+    use_lmcache_metrics: bool = False
     verbose: bool = False

@@ -12,6 +12,8 @@
 | timeout | int  | Per-request timeout.  | `30` | **Optional**<br>default: 30
 | prompt | str  | Single-case input; used when `dataset_path` is omitted (iterated) | `how are you?`  | **Optional**<br>default: how are you?
 | dataset_path | str  | Batch dataset path (only support ShareGPT format); if absent, `prompt` is reused | `./ShareGPT_V3_unfiltered_cleaned_split.json` | **Optional**<br>
-| output_file | str  | Report output path | `./report.json` | **Optional**<br>default: ./report.json
+| output_file | str  | Report file suffix name | `report.json` | **Optional**<br>default: report.json
+| report_file_root | str | Root directory to save report files | `$(pwd)/reports` | **Optional**<br>default: $(pwd)/reports
 | max_tokens | int  | Maximum tokens to generate per response.  | `256`  | **Optional**<br>default: 32
 | temperature | float  | Sampling temperature (higher = more random; 0 ≈ greedy).  | 0.7、0.0  | **Optional**<br>default: 0.7
+| use_lmcache_metrics | bool | Enable LMCache metrics collection. When enabled, the benchmark collects cache-related metrics such as lookup hits, total lookup tokens, and hit ratios from the `/metrics` endpoint. | `--use_lmcache_metrics` | Optional<br>default: `false` |
