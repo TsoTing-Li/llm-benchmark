@@ -22,7 +22,7 @@ docker build -f docker/Dockerfile -t llm-benchmark:v0.1.1 .
 
 ## 🏁 Startup
 ```bash
-docker run -it --rm --name llm-benchmark-tool -v $(pwd):/workspace llm-benchmark bash
+docker run -it --rm --name llm-benchmark-tool -v /etc/localtime:/etc/localtime -v $(pwd):/workspace --network=host llm-benchmark:v0.1.1 bash
 ```
 
 ## ✨ Example
