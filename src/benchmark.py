@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import os
 import time
-import traceback
 from datetime import datetime
 from typing import Literal
 
@@ -482,7 +481,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n❗ User interrupted")
     except Exception as e:
-        traceback.print_exc()
         print(f"\n❌ Unexpected error: {e}")
     finally:
         for file_path, report in benchmark_reports.items():
