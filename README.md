@@ -1,72 +1,85 @@
 # llm-benchmark
 ### 🚀 Async & OpenAI-Compatible LLM Benchmark
 A high-performance benchmarking tool for Large Language Models supporting async execution and OpenAI API format.
-Easily measure latency, throughput, and token speed with concurrent requests and streaming response support. Perfect for evaluating both cloud and self-hosted models.
+Easily measure latency, throughput, and token speed with concurrent requests and streaming response support.
+Now also supports LMCache hit-rate analysis, enabling cold/warm run comparison and cache effectiveness evaluation.
+
 
 ## 🏋️ Pre-require
-* Docker
-    * [Docker 20.10+](https://docs.docker.com/engine/install/ubuntu/)
-    * Setting docker to group
-        ```bash
-        sudo usermod -aG docker $USER
-        ```
-* Repository
-    * clone the repository
-      ```bash
-      git clone https://github.com/TsoTing-Li/llm-benchmark.git
-      ```
-## 🛠️ Build environment in docker
+### Docker
+* [Docker 20.10+](https://docs.docker.com/engine/install/ubuntu/)
+* Setting docker to group
+    ```bash
+    sudo usermod -aG docker $USER
+    ```
+### Repository
+* clone the repository
+  ```bash
+  git clone https://github.com/TsoTing-Li/llm-benchmark.git
+  ```
+## 🛠️ Environment
+### Docker
 ```bash
 docker build -f docker/Dockerfile -t llm-benchmark:v0.1.1 .
 ```
 
 ## 🏁 Startup
 ```bash
-docker run -it --rm --name llm-benchmark-tool -v /etc/localtime:/etc/localtime -v $(pwd):/workspace --network=host llm-benchmark:v0.1.1 bash
+docker run -it --rm \
+    --name llm-benchmark-tool \
+    -v /etc/localtime:/etc/localtime \
+    -v $(pwd):/workspace \
+    --network=host \
+    llm-benchmark:v0.1.1 bash
 ```
 
 ## ✨ Example
-* chat example
-    ```bash
-    python3 src/benchmark.py \
-        --base_url http://localhost:8000 \
-        --endpoint /v1/chat/completions \
-        --model google/gemma-3-12b-it \
-        --num_request 300 \
-        --concurrency 64 \
-        --prompt "how are you?" \
-        --output_file report.json \
-        --max_tokens 32
-    ```
-* generate example
-    ```bash
-    python3 src/benchmark.py \
-        --base_url http://localhost:8000 \
-        --endpoint /v1/completions \
-        --model google/gemma-3-12b-it \
-        --num_request 300 \
-        --concurrency 64 \
-        --dataset_path ShareGPT_V3_unfiltered_cleaned_split.json \
-        --output_file report.json \
-        --max_tokens 32
-    ```
-* LMCache example
-  * This example generates two separate report files.
-  1. The file whose name contains `cold` represents the results from a cold start, where no cache is available.
-  2. The file whose name contains `warm` represents the results after the cache has been populated, showing the performance with caching enabled.
-    ```bash
-    python3 src/benchmark.py \
-        --base_url http://localhost:8000 \
-        --endpoint /v1/completions \
-        --model google/gemma-3-12b-it \
-        --num_request 300 \
-        --concurrency 64 \
-        --dataset_path ShareGPT_V3_unfiltered_cleaned_split.json \
-        --output_file report.json \
-        --max_tokens 32
-        --use_lmcache_metrics
-    ```
-- **For more parameter details, please check** [params.md](docs/params.md)
+### Chat Example
+```bash
+python3 src/benchmark.py \
+    --base_url http://localhost:8000 \
+    --endpoint /v1/chat/completions \
+    --model google/gemma-3-12b-it \
+    --num_request 300 \
+    --concurrency 64 \
+    --prompt "how are you?" \
+    --output_file report.json \
+    --max_tokens 32
+```
+### Generate Example
+```bash
+python3 src/benchmark.py \
+    --base_url http://localhost:8000 \
+    --endpoint /v1/completions \
+    --model google/gemma-3-12b-it \
+    --num_request 300 \
+    --concurrency 64 \
+    --dataset_path ShareGPT_V3_unfiltered_cleaned_split.json \
+    --output_file report.json \
+    --max_tokens 32
+```
+### Using LMCache Metrics
+
+If you want to capture LMCache hit rates, add the `--use_lmcache_metrics` flag to the command.
+
+⚠ **Important:**  
+LMCache metrics will only be available if your **model server supports LMCache** and **has LMCache metrics enabled**.  
+Currently, **vLLM** is the primary model server that integrates **LMCache**.  
+If LMCache metrics are not exposed by the server, the generated reports will not contain any hit-rate information.
+
+When LMCache metrics are available, the tool generates **two separate report files** to help you compare performance differences between **cold** and **warm** runs:
+
+- **Cold Report (`*cold*.json`)**  
+  Represents the results from a *cold start*.  
+  LMCache is enabled, but because it is the first run, the cache has not been populated yet.  
+  This provides a baseline measurement before any cached tokens are available.
+
+- **Warm Report (`*warm*.json`)**  
+  Represents the results *after the cache has been populated*, showing performance when LMCache has usable cached tokens.  
+  This report reflects the improvements gained from cache hits.
+
+
+**For more parameter details, please check** [params.md](docs/params.md)
 
 ## 📊 Report
 * **general content**
