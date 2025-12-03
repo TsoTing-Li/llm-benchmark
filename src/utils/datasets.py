@@ -26,9 +26,12 @@ async def read_dataset_file(path: str) -> dict[str, str]:
 
 
 async def build_dataset(path: str, prompt: str) -> Iterator[str]:
-    if os.path.isfile(path):
-        datasets = await read_dataset_file(path=path)
-        datasets_cycle = itertools.cycle(datasets.values())
+    if path:
+        if os.path.isfile(path):
+            datasets = await read_dataset_file(path=path)
+            datasets_cycle = itertools.cycle(datasets.values())
+        else:
+            raise FileNotFoundError(f"Dataset file {path} not found.")
 
     else:
         datasets_cycle = itertools.cycle([prompt])

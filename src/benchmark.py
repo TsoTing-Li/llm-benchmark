@@ -480,6 +480,8 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         print("\n❗ User interrupted")
+    except FileNotFoundError as e:
+        print(f"\n❌ {e}")
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
     finally:
